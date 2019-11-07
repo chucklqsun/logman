@@ -1,36 +1,33 @@
 import Logman.Utility.File as File
-import Logman.Config.Mapping as Mapping
-import Logman.Config.Color as Color
-import re
+import Logman.Engine.ExcludeMe as ExcludeMe
+import Logman.Engine.DisplayMe as DisplayMe
+from Logman.GlobalConfig import GlobalConfig
+from Logman.Engine.Report import Report
+import os
+
 
 def main():
-    log_path = 'C:\\Program Files\\Apache Software Foundation\\Tomcat 8.5\\logs\\tomcat8-stderr.2019-03-13.log'
+    GlobalConfig.app_path = os.path.dirname(os.path.realpath(__file__))
+
+    log_path = os.path.join(GlobalConfig.app_path, 'output', 'tomcat8-stderr.2019-03-13.log')
     print("Log Path:" + log_path)
-    content = File.read_file(log_path)
-    for ln in content:
-        line = {}
-        last_flt = ""
-        for flt in Mapping.Fields:
-            last_flt = flt["regex"]
-            x = re.search(flt["regex"], ln)
-            line[flt["name"]] = {}
-            if x:
-                line[flt["name"]]["str"] = x.group(0)
-                line[flt["name"]]["color"] = flt["color"]
+    ori_content = File.read_file(log_path)
 
-                # use filter to exclude unwanted log
+    # use pre-define level to exclude log
+    pre_content = ExcludeMe.pre_exclude_log(ori_content)
 
-                print(
-                    line[flt["name"]]["color"] +
-                    line[flt["name"]]["str"]
-                    , end=''
-                )
-                print(" ", end='')
+    # use exclude file to hide log
+    post_content = ExcludeMe.post_exclude_log(pre_content)
+    # display new log
+    DisplayMe.display_log(post_content)
 
-        # default field
-        x = re.search(last_flt+"(.*)$", ln)
-        if x:
-            print(Color.Color.ENDC + x.group(2), end='')
-        print("")
+    # export exclude file via post_content
+    ExcludeMe.output_new_exclude_file(post_content)
 
+    # export post_content as report
+    # todo: use classification for report
+    Report.output_report(post_content)
+
+
+# Everything from here
 main()
